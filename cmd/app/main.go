@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/epheer/notephee/internal/config"
+)
 
 func main() {
-	fmt.Println("Привет, это Notephee!")
+	config.Get()
 }

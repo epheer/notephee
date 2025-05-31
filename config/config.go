@@ -9,13 +9,17 @@ import (
 
 type Config struct {
 	TelegramToken string
+
 	EmailHost     string
 	EmailPort     string
 	EmailUser     string
 	EmailPassword string
+
+	IsTelegramValid bool
+	IsEmailValid    bool
 }
 
-var cfg *Config
+var Cfg *Config
 
 func getEnv(name string) string {
 	return os.Getenv("NOTEPHEE_" + name)
@@ -25,7 +29,7 @@ func getEnv(name string) string {
 func load() {
 	_ = godotenv.Load()
 
-	cfg = &Config{
+	Cfg = &Config{
 		TelegramToken: getEnv("TELEGRAM_TOKEN"),
 		EmailHost:     getEnv("EMAIL_HOST"),
 		EmailPort:     getEnv("EMAIL_PORT"),
@@ -33,23 +37,23 @@ func load() {
 		EmailPassword: getEnv("EMAIL_PASSWORD"),
 	}
 
-	if !cfg.IsTelegramEnabled() {
+	if !Cfg.IsTelegramEnabled() {
 		slog.Info("Конфигурация Telegram-бота не заполнена, функционал работы с этим сервисом ограничен")
 	}
-	if !cfg.IsEmailEnabled() {
+	if !Cfg.IsEmailEnabled() {
 		slog.Info("Конфигурация для email не заполнена или заполнена частично, функционал отправки электронных писем ограничен")
 	}
-	if !cfg.IsTelegramEnabled() && !cfg.IsEmailEnabled() {
+	if !Cfg.IsTelegramEnabled() && !Cfg.IsEmailEnabled() {
 		slog.Error("Конфигурация Notephee не загружена, функционал недоступен")
 	}
 }
 
 // Get возвращает текущий конфиг
 func Get() *Config {
-	if cfg == nil {
+	if Cfg == nil {
 		load()
 	}
-	return cfg
+	return Cfg
 }
 
 func (c *Config) IsEmailEnabled() bool {

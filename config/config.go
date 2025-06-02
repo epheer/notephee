@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"log/slog"
 	"os"
 
@@ -8,7 +9,8 @@ import (
 )
 
 type Config struct {
-	TelegramToken string
+	TelegramToken   string
+	TelegramBotName string
 
 	EmailHost     string
 	EmailPort     string
@@ -21,24 +23,32 @@ type Config struct {
 
 var Cfg *Config
 
+// LoadEnv загружает переменные из env-файла
+func LoadEnv(path string) error {
+	err := godotenv.Load(path)
+	if err != nil {
+		log.Printf("Не удалось загрузить .env файл по пути %s: %v", path, err)
+	}
+	return err
+}
+
 func getEnv(name string) string {
 	return os.Getenv("NOTEPHEE_" + name)
 }
 
 // load загружает конфигурацию из переменных окружения
 func load() {
-	_ = godotenv.Load()
-
 	Cfg = &Config{
-		TelegramToken: getEnv("TELEGRAM_TOKEN"),
-		EmailHost:     getEnv("EMAIL_HOST"),
-		EmailPort:     getEnv("EMAIL_PORT"),
-		EmailUser:     getEnv("EMAIL_USER"),
-		EmailPassword: getEnv("EMAIL_PASSWORD"),
+		TelegramToken:   getEnv("TELEGRAM_TOKEN"),
+		TelegramBotName: getEnv("TELEGRAM_BOT_NAME"),
+		EmailHost:       getEnv("EMAIL_HOST"),
+		EmailPort:       getEnv("EMAIL_PORT"),
+		EmailUser:       getEnv("EMAIL_USER"),
+		EmailPassword:   getEnv("EMAIL_PASSWORD"),
 	}
 
 	if !Cfg.IsTelegramEnabled() {
-		slog.Info("Конфигурация Telegram-бота не заполнена, функционал работы с этим сервисом ограничен")
+		slog.Info("Конфигурация Telegram-бота не заполнена или заполнена частично, функционал работы с этим сервисом ограничен")
 	}
 	if !Cfg.IsEmailEnabled() {
 		slog.Info("Конфигурация для email не заполнена или заполнена частично, функционал отправки электронных писем ограничен")
@@ -61,5 +71,5 @@ func (c *Config) IsEmailEnabled() bool {
 }
 
 func (c *Config) IsTelegramEnabled() bool {
-	return c.TelegramToken != ""
+	return c.TelegramToken != "" && c.TelegramBotName != ""
 }

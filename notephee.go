@@ -9,7 +9,9 @@ import (
 
 func Init() {
 	config.Get()
-	err := telegram.CheckConnection()
+	logger := slog.Default()
+	tg := telegram.NewTgClient(config.Cfg, logger)
+	err := tg.CheckConnection()
 	if err != nil {
 		slog.Warn("Невозможно подключиться к Telegram. Проверьте валидность токена в NOTEPHEE_TELEGRAM_TOKEN.")
 	}

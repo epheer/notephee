@@ -41,11 +41,12 @@ type TgResponse struct {
 
 // TgClient инкапсулирует клиента Telegram Bot API.
 type TgClient struct {
-	token  string       // Токен Telegram бота
-	name   string       // Имя Telegram бота
-	uri    string       // Базовый URL API
-	http   *http.Client // HTTP-клиент
-	logger *slog.Logger // Логгер для отладки
+	token   string       // Токен Telegram бота
+	name    string       // Имя Telegram бота
+	uri     string       // Базовый URL API
+	http    *http.Client // HTTP-клиент
+	logger  *slog.Logger // Логгер для отладки
+	Enabled bool         // Флаг доступности функционала
 }
 
 // SendResult представляет результат отправки одного сообщения.
@@ -68,11 +69,12 @@ const (
 func NewTgClient(cfg *config.Config, logger *slog.Logger) *TgClient {
 	uri := fmt.Sprintf("https://api.telegram.org/bot%s", cfg.TelegramToken)
 	return &TgClient{
-		token:  cfg.TelegramToken,
-		name:   cfg.TelegramBotName,
-		uri:    uri,
-		http:   &http.Client{Timeout: 10 * time.Second},
-		logger: logger,
+		token:   cfg.TelegramToken,
+		name:    cfg.TelegramBotName,
+		uri:     uri,
+		http:    &http.Client{Timeout: 10 * time.Second},
+		logger:  logger,
+		Enabled: cfg.IsTelegramEnabled(),
 	}
 }
 
@@ -121,6 +123,10 @@ func (c *TgClient) parseResponse(resp *http.Response) (*TgResponse, error) {
 //
 // Возвращает результат и ошибку (если есть).
 func (c *TgClient) postReq(data json.RawMessage, method string) (*TgResponse, error) {
+	if !c.Enabled {
+		return nil, fmt.Errorf("функционал Telegram отключён: некорректная конфигурация")
+	}
+
 	res, err := c.http.Post(c.tg(method), "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
@@ -132,6 +138,10 @@ func (c *TgClient) postReq(data json.RawMessage, method string) (*TgResponse, er
 //
 // Возвращает ошибку, если соединение не удалось или API вернул ошибку.
 func (c *TgClient) CheckConnection() error {
+	if !c.Enabled {
+		return fmt.Errorf("функционал Telegram отключён: некорректная конфигурация")
+	}
+
 	res, err := c.http.Get(c.tg(GetMe))
 	if err != nil {
 		return err
@@ -144,6 +154,10 @@ func (c *TgClient) CheckConnection() error {
 //
 // Возвращает TgResponse и ошибку (если произошла).
 func (c *TgClient) SendText(options MessageOptions) (TgResponse, error) {
+	if !c.Enabled {
+		return TgResponse{}, fmt.Errorf("функционал Telegram отключён: некорректная конфигурация")
+	}
+
 	data, err := json.Marshal(options)
 	if err != nil {
 		return TgResponse{}, err
@@ -159,6 +173,18 @@ func (c *TgClient) SendText(options MessageOptions) (TgResponse, error) {
 //
 // Возвращает срез результатов по каждому получателю.
 func (c *TgClient) SendMessaging(options SendingOptions) []SendResult {
+	if !c.Enabled {
+		c.logger.Warn("отправка сообщений Telegram отключена: возвращаем заглушку")
+		results := make([]SendResult, 0, len(options.ChatIDs))
+		for _, chatID := range options.ChatIDs {
+			results = append(results, SendResult{
+				ChatID: chatID,
+				Error:  fmt.Errorf("функционал Telegram отключён"),
+			})
+		}
+		return results
+	}
+
 	limiter := rate.NewLimiter(rate.Every(time.Second/30), 1)
 
 	var (
@@ -173,7 +199,6 @@ func (c *TgClient) SendMessaging(options SendingOptions) []SendResult {
 		go func(chatID int64) {
 			defer wg.Done()
 
-			// Ожидание разрешения лимитера
 			if err := limiter.Wait(context.Background()); err != nil {
 				c.logger.Error("лимитер не пропустил", "chat_id", chatID, "error", err)
 				mu.Lock()

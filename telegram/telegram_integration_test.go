@@ -18,7 +18,7 @@ func TestTelegramIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Не найден .env")
 	}
-	config.Get()
+	config.Get(slog.Default())
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	cfg := config.Cfg

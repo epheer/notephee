@@ -16,6 +16,7 @@ type Config struct {
 	EmailPort     string
 	EmailUser     string
 	EmailPassword string
+	EmailFromName string
 
 	IsTelegramValid bool
 	IsEmailValid    bool
@@ -37,31 +38,32 @@ func getEnv(name string) string {
 }
 
 // load загружает конфигурацию из переменных окружения
-func load() {
+func load(logger *slog.Logger) {
 	Cfg = &Config{
 		TelegramToken:   getEnv("TELEGRAM_TOKEN"),
 		TelegramBotName: getEnv("TELEGRAM_BOT_NAME"),
-		EmailHost:       getEnv("EMAIL_HOST"),
-		EmailPort:       getEnv("EMAIL_PORT"),
-		EmailUser:       getEnv("EMAIL_USER"),
-		EmailPassword:   getEnv("EMAIL_PASSWORD"),
+		EmailHost:       getEnv("SMTP_HOST"),
+		EmailPort:       getEnv("SMTP_PORT"),
+		EmailUser:       getEnv("SMTP_USER"),
+		EmailPassword:   getEnv("SMTP_PASSWORD"),
+		EmailFromName:   getEnv("SMTP_FROM_NAME"),
 	}
 
 	if !Cfg.IsTelegramEnabled() {
-		slog.Info("Конфигурация Telegram-бота не заполнена или заполнена частично, функционал работы с этим сервисом ограничен")
+		logger.Info("Конфигурация Telegram-бота не заполнена или заполнена частично, функционал работы с этим сервисом ограничен")
 	}
 	if !Cfg.IsEmailEnabled() {
-		slog.Info("Конфигурация для email не заполнена или заполнена частично, функционал отправки электронных писем ограничен")
+		logger.Info("Конфигурация для email не заполнена или заполнена частично, функционал отправки электронных писем ограничен")
 	}
 	if !Cfg.IsTelegramEnabled() && !Cfg.IsEmailEnabled() {
-		slog.Error("Конфигурация Notephee не загружена, функционал недоступен")
+		logger.Error("Конфигурация Notephee не загружена, функционал недоступен")
 	}
 }
 
 // Get возвращает текущий конфиг
-func Get() *Config {
+func Get(logger *slog.Logger) *Config {
 	if Cfg == nil {
-		load()
+		load(logger)
 	}
 	return Cfg
 }

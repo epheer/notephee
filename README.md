@@ -19,7 +19,7 @@
 go get github.com/epheer/notephee
 ```
 
-2. Скопируйте `.env.dist` в свой `.env` и задайте эти значения переменных среды
+2. Скопируйте `.env.dist` в свой `.env` и задайте значения переменных среды
 ```dotenv
 # Настройка Telegram для Notephee
 NOTEPHEE_TELEGRAM_TOKEN=
@@ -30,6 +30,7 @@ NOTEPHEE_SMTP_HOST=
 NOTEPHEE_SMTP_PORT=
 NOTEPHEE_SMTP_USER=
 NOTEPHEE_SMTP_PASSWORD=
+NOTEPHEE_SMTP_FROM_NAME=
 ```
 
 3. Инициализируйте Notephee
@@ -37,10 +38,14 @@ NOTEPHEE_SMTP_PASSWORD=
 ```go
 package main
 
-import "github.com/epheer/notephee"
+import (
+	"log/slog"
+	
+	"github.com/epheer/notephee"
+)
 
 func main() {
-	notephee.Init()
+	notephee.Init(slog.Default())
 }
 ```
 
@@ -54,7 +59,11 @@ func main() {
 
 Модуль покрыт интеграционными тестами. Для тестирования вам необходимо:
 
-1. Скопировать `.env.dist` в `.env` и задать валидные значения.
+1. Скопировать `.env.dist` в `.env` и задать валидные значения, а так же добавить следующие записи
+```dotenv
+# Переменные для тестов
+EMAIL_TEST_RECIPIENT= 
+```
 2. Вызвать тест пакета командой
 ```bash
 go test -v ./PACKAGE_DIRECTORY

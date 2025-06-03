@@ -51,9 +51,13 @@ type UpdatesResponse struct {
 
 // NewBindingManager создаёт новый BindingManager с заданным временем жизни инвайтов.
 //
-// ttl — продолжительность действия инвайта.
-// logger — логгер для вывода диагностической информации.
+// Возвращает nil, если Telegram отключён.
 func (c *TgClient) NewBindingManager(ttl time.Duration, logger *slog.Logger) *BindingManager {
+	if !c.Enabled {
+		logger.Warn("Попытка создать BindingManager, но Telegram отключён")
+		return nil
+	}
+
 	return &BindingManager{
 		ttl:    ttl,
 		logger: logger,
@@ -72,7 +76,6 @@ func (bm *BindingManager) CreateInvite(userID string) string {
 		Expiry: time.Now().Add(bm.ttl),
 	})
 
-	// Автоматическое удаление инвайта после истечения срока действия
 	go func() {
 		time.Sleep(bm.ttl)
 		bm.store.Delete(inviteCode)
@@ -108,6 +111,16 @@ func (bm *BindingManager) ResolveBinding(uuid string, chatID int64) (*Binding, e
 // bm — менеджер инвайтов для проверки кодов /start.
 // callback — вызывается при успешной привязке.
 func (c *TgClient) StartPolling(ctx context.Context, bm *BindingManager, callback func(Binding)) {
+	if !c.Enabled {
+		c.logger.Warn("StartPolling не запущен: Telegram отключён")
+		return
+	}
+
+	if bm == nil {
+		c.logger.Warn("StartPolling не запущен: BindingManager == nil")
+		return
+	}
+
 	var offset int64
 
 	for {
@@ -141,7 +154,6 @@ func (c *TgClient) StartPolling(ctx context.Context, bm *BindingManager, callbac
 			text := upd.Message.Text
 			chatID := upd.Message.Chat.ID
 
-			// Обработка команды /start <uuid>
 			if strings.HasPrefix(text, "/start ") {
 				inviteCode := strings.TrimPrefix(text, "/start ")
 				binding, err := bm.ResolveBinding(inviteCode, chatID)
